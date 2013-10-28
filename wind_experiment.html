@@ -1,0 +1,102 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<style>
+   		canvas { border: 1px dotted black}
+   	</style>
+</head>
+
+<body>
+	<canvas id="cloudScreen" width="800" height="400" style= "position:fixed; top:40px; left:2px; z-index: -1; background_color:blue;" >sorry your browser sucks</canvas>
+<script>
+	//light sky blue 135-206-250 	87cefa
+	 
+	 var cloud_screen = document.getElementById("cloudScreen");
+	 var cloud_context = cloud_screen.getContext('2d');
+	 
+	 function randomInt(min,max){
+            return Math.floor(Math.random() * (max - (min-1) )) + min;
+        }
+	 
+	 var w_direction = randomInt(0,1);
+	 var w_strength = randomInt(0,6);
+	 if(w_direction ===0){
+	 	var wind = w_strength *-1;
+	 }
+	 else{
+	 	var wind = w_strength;
+	 }
+	 
+	 function Cloud(xpos){
+	 	if(typeof xpos === 'undefined'){
+	 		if(wind > 0){
+	 			this.xpos = -200;
+	 		}
+	 		else {
+	 		this.xpos = 1000;
+	 	}
+	 	}
+	 	else{
+	 		this.xpos = xpos;
+	 	}
+	 	
+	 	this.ypos = randomInt(20,250);
+	 	this.length = randomInt(75,200);
+	 	
+	 	this.layerypos = this.ypos;
+	 	this.layerOffset = 30;//randomInt(this.length/10,this.length/4);
+	 	this.layerWidth = [this.length, this.length-this.layerOffset*2];
+	 	layerHeight = 10;
+	 	this.numLayers= 2;
+	 	
+	 	
+	 	Cloud.prototype.update = function(){
+	 		this.xpos += wind;
+	 		console.log ("xpos =" + this.xpos + "wind speed = "+ w_strength);
+	 	}
+	 	
+	 	Cloud.prototype.draw = function(){
+	 		cloud_context.fillStyle = "white";
+	 		cloud_context.fillRect(this.xpos,this.ypos,this.layerWidth[0],layerHeight);
+	 		cloud_context.fillRect(this.xpos+this.layerOffset,this.ypos-layerHeight,this.layerWidth[1],layerHeight);
+	 	}
+	 }
+	 
+	 function refresh(){
+			cloud_context.clearRect(0,0,800,500);
+			cloud_context.fillStyle = '#87CEFA';
+			cloud_context.fillRect(0,0,800,500);
+		}
+	
+	function drawFrame(){
+		refresh();
+		cloudScape.draw();
+		cloudScape.update();
+	}
+	var cloudScape = new Array();
+	cloudScape.update = function(){
+		for (var cloud = 0; cloud < cloudScape.length; cloud++){
+			cloudScape[cloud].update();
+			if(cloudScape[cloud].xpos > 1000 || cloudScape[cloud].xpos < -200){
+				cloudScape[cloud] = new Cloud();
+			}
+		} 	
+	}
+	cloudScape.draw = function(){
+		for (var cloud = 0; cloud < cloudScape.length; cloud++){
+			cloudScape[cloud].draw();
+		} 
+	}	
+	cloudScape.initialize = function(){
+		cloudScape.push(new Cloud(232));
+		cloudScape.push(new Cloud(610));
+		cloudScape.push(new Cloud(50));
+	}
+
+	
+	cloudScape.initialize();
+	setInterval(drawFrame,1000/60);
+	 
+</script>
+<body>
+</html>

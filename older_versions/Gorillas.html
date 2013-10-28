@@ -1,0 +1,349 @@
+<!DOCTYPE HTML>
+
+<html>
+
+<head>
+    <!--The goal of this iteration is to get the gorillas firing missiles while on buildings
+    The problem I am having is implementing FPS to get each frame without altering the trajectory-->
+    
+    <style type = "text/css">
+        canvas { border: 1px dotted black}
+        
+        #interface {
+        	position:fixed;
+			top:70px;
+			right:69px;
+        }
+        
+    </style>
+    
+</head>
+
+   <body>
+    <h3>GORILLAS TOSSING GORILLAS AT GORILLAS</h3>
+    <div>
+    <canvas id="gameScreen" width="800" height="400" style= "position:fixed; top:40px; left:2px; z-index: 1" >sorry your browser sucks</canvas>
+    <canvas id="shootScreen" width="800" height="400" style="position:fixed; top:40px; left:2px; z-index: 2"> and you are gay</canvas>
+    </div>
+    <div id="interface"> 
+        <button id="play" onclick="makeGame()" type="button">play game</button>
+    
+        <form id ="shotInput">
+            Angle: <input type="hidden"><br>
+            Power: <input type="hidden">
+            <input type="hidden" value="player1">
+            <input id="fireB" type="hidden" onclick="takeTurn(this.form)" value="FIRE">
+        </form>
+        <div id="gameInfo"></div>
+    </div>
+    <script>
+  
+        var game_screen = document.getElementById("gameScreen");
+        var shoot_screen = document.getElementById("shootScreen");
+        var context = game_screen.getContext("2d");
+        var shootContext = shoot_screen.getContext("2d");
+        
+        var gorilla1 = new gorilla(52,"grey");   
+        var gorilla2 = new gorilla(628,"pink");
+        
+        var gravity = 30;
+        var start = 0;
+        var end = 800;
+        var FPS = 30;
+        var groundLevel = 400;
+        var buildingWidth = 50;
+        var buildingPos = null;
+
+        function gorilla(xpos,color){
+            this.color = color;
+            this.gHeight = 20;
+            this.gWidth = 20;
+            this.xpos = xpos;
+            this.ypos = null;
+            this.hitBox = [];
+            
+            gorilla.prototype.place = function(){
+            /* figures out the proper ypos for a gorilla to put him on top
+            of a building*/
+                //console.log("we are placing gorilla.");
+                var ycoord = 0;
+                var pixelColumn = context.getImageData(this.xpos,0,1,400);
+                //console.log("pixel color number"+ pixelColumn.data[0]);
+                while(pixelColumn.data[ycoord] === 255 && pixelColumn.data[ycoord +1] === 255 && pixelColumn.data[ycoord + 2] === 255 && pixelColumn.data[ycoord + 3] === 255){
+                    ycoord+=4;
+                }
+                //console.log("ycoord is " + ycoord);
+                //console.log("image data at the pixel: " + pixelColumn.data[ycoord-4]+ " "+ pixelColumn.data[ycoord-3]);
+                this.ypos= ycoord/4 - this.gHeight;
+                //console.log("ypos is" + this.ypos);
+            };
+   
+            gorilla.prototype.draw = function(){
+                //console.log("cooridinates for gorilla are: " + this.xpos +" " + this.ypos);
+                context.fillStyle = this.color;
+                context.fillRect(this.xpos,this.ypos,this.gWidth,this.gHeight);
+            //console.log(this.hitBox);
+            //console.log(this.hitBox.length);
+            }
+            
+            gorilla.prototype.hit = function(){
+            	var gorillaData = context.getImageData(this.xpos,this.ypos,this.gWidth,this.gHeight);
+            	for(var i = 0; i < gorillaData.data.length; i+=4){
+            			var gorRed= gorillaData.data[i];
+            			var gorGreen = gorillaData.data[i+1];
+            			var gorBlue = gorillaData.data[i+2];
+            			if(gorRed === 255 && gorGreen === 255 && gorBlue === 255){
+            				return true;
+            			}
+            		}
+            	return false;
+            }
+        }
+
+        function randomInt(min,max){
+            return Math.floor(Math.random() * (max - (min-1) )) + min;
+        }
+
+        function buildingColor(){
+            var choice = randomInt(1,3);
+            switch(choice){
+                case 1:
+                    return "grey";
+                case 2:
+                    return "brown";
+                case 3:
+                    return "green";
+            }
+        }
+
+        function drawBuilding(xPos,yPos,width,height,color){
+            context.fillStyle = color;
+            context.fillRect(xPos,yPos,width,height);
+        }
+
+        function drawWindow(bXPos,bYPos){
+            var gap = 3;
+    
+            var winHeight = 4;
+            var winWidth = 2;
+            var winLocX =bXPos +gap;
+            var winLocY =bYPos + gap;
+            var color = "yellow";
+    
+            context.fillStyle= color;
+            for(var y = winLocY; y < groundLevel - gap; y+=8){
+                for(var x = winLocX; x < bXPos + buildingWidth - gap;x += 5){
+                    context.fillRect(x,y,winWidth,winHeight);
+                }
+            }
+        }
+
+        function makeSkyline(){
+            context.fillStyle = "white";
+            context.fillRect(0,0,800,400);
+            buildingPos = start;
+            while(buildingPos < end){
+                var buildingYPos = randomInt(100,350);
+                drawBuilding(buildingPos, buildingYPos, buildingWidth,groundLevel - buildingYPos,buildingColor());
+                drawWindow(buildingPos, buildingYPos);
+                buildingPos += buildingWidth;
+            }
+        }
+        
+        function toRad(degrees){
+            this.degrees = degrees;
+            return (this.degrees/180)*Math.PI;
+        }
+		
+		function Cloud(){
+			//there will be clouds that will move to follow the wind.
+		}
+		
+		function Wind(){
+			this.strength= randomInt(0,100);
+			var west = randomInt(0,1);
+			if(west){
+				this.strength= -1 * this.strength;
+			}
+		}
+        
+        function aMissile(whichGor, angle, power){
+            this.angle = toRad(angle);
+            this.power = power;
+            if(whichGor === 1){
+                this.gorilla = gorilla1;
+            }
+            else{
+                this.gorilla = gorilla2;
+            }
+            
+            //console.log(this.gorilla);
+            this.startTime = (new Date()).getTime();
+            this.starty = this.gorilla.ypos -6;
+            this.startx = this.gorilla.xpos;
+            
+            this.xpos = this.startx;  
+            this.ypos = this.starty;
+            this.trajectory = [[this.xpos,this.ypos]];
+            
+            this.yVector = 0 - (Math.sin(this.angle)*this.power);
+            this.xVector = Math.cos(this.angle)*this.power;
+            
+            this.hitMonkey = false;
+            
+            aMissile.prototype.isHit = function(gorilla){
+            	//checks to see if missile has hit something
+            	//console.log("isHit checking");
+            	if(this.ypos > 400 || this.xpos > 800 || this.xpos < 0){
+            		//this one checks for the boundaries of the gamescreen
+            		console.log('out of bounds');
+            		return true;
+            	}
+            	if(this.ypos > 1){
+            		var missile_space = context.getImageData(this.xpos,this.ypos,5,5);
+            		for(var i = 0; i < missile_space.data.length; i+=4){
+            			var spaceRed= missile_space.data[i];
+            			var spaceGreen = missile_space.data[i+1];
+            			var spaceBlue = missile_space.data[i+2];
+            			console.log("missile_space rgb = " + spaceRed + ":" + spaceGreen + ":" +spaceBlue);
+            			if(missile_space.data[i] !=255 || missile_space.data[i+1] !=255 || missile_space.data[i+2] != 255){
+            				return true;
+            			}
+            		}
+            	}
+            	return false;
+            }
+                       
+            aMissile.prototype.update = function(T1){
+            	//console.log('missile updating');
+                var T2 = (new Date()).getTime();
+                var secs = (T2 - this.startTime)/1000;
+                this.xpos = this.startx + this.xVector*secs;
+                this.ypos = this.starty + this.yVector*secs +(1/2)*(gravity * Math.pow(secs, 2));
+                //console.log("gforce = " + (gravity * Math.pow(secs, 2)));
+                this.trajectory.push([this.xpos,this.ypos]);
+            }
+            
+            aMissile.prototype.draw = function(){
+            	//console.log("missile drawing");
+                shootContext.clearRect(0,0,end,groundLevel);
+                shootContext.fillStyle = "black";
+                //shootContext.fillRect(40,40,40,40);
+                shootContext.fillRect(this.xpos,this.ypos,5, 5);
+            }
+     
+            
+            aMissile.prototype.explode = function(){
+                var explosionCenter = [this.xpos + 3,this.ypos + 3];
+                var explosionRadius = 2;
+                var maxRadius = 12;
+                
+                function drawExplosion(){
+                	shootContext.beginPath();
+                	shootContext.fillStyle = 'red';
+                	shootContext.arc(explosionCenter[0],explosionCenter[1], explosionRadius, 2*Math.PI, 0);
+                	shootContext.closePath();
+                	shootContext.fill();
+                	explosionRadius++;
+                	if(explosionRadius > maxRadius){
+                		clearInterval(explodeId);
+                		context.fillStyle = "white"
+                		context.beginPath();
+                		context.arc(explosionCenter[0],explosionCenter[1], explosionRadius, 2*Math.PI, 0);
+                		context.closePath();
+                		context.fill();
+                		
+                		shootContext.fillStyle = 'white';
+                		shootContext.beginPath();
+                		shootContext.arc(explosionCenter[0],explosionCenter[1], explosionRadius, 2*Math.PI, 0);
+                		shootContext.closePath();
+                		shootContext.fill();
+                		shootContext.clearRect(0,0,end,groundLevel);
+                		if(gorilla1.hit() || gorilla2.hit()){
+            				console.log("a gorilla is down!");
+            				cleanUp();
+            			}
+                	}
+                }
+                var explodeId = setInterval(drawExplosion, 100);
+                
+            }
+        }
+      
+        function takeTurn(form){
+        	//objects motherfucker
+            var start = function(){
+            	//console.log('taking a turn');
+            	var nextTurn = null;
+            
+            	if(form[2].value == 'player1'){
+                	this.angle = Number(form[0].value);
+                	this.power = Number(form[1].value);
+                	this.whichGor = 1;
+                	this.nextTurn = "player2";
+            	}
+            	else if(form[2].value =='player2'){
+                	this.angle = Number(180 - form[0].value);
+                	this.power = Number(form[1].value);
+                	this.whichGor = 2;
+                	this.nextTurn = "player1";
+            	}
+            }
+            
+            function update(){
+            	//console.log('update function');
+            	missile.update();
+            	missile.draw();
+            	console.log("current missile location is:" + " " + missile.trajectory[missile.trajectory.length-1]);
+            	if(missile.isHit()){
+            		//console.log("missile hit something");
+            		clearInterval(exitTurnLoop);
+            		missile.explode();
+            		
+            	document.getElementById("fireB").disabled = false;
+            	delete missile;
+            	}
+            }
+            
+            start();
+            var missile = new aMissile(this.whichGor, this.angle, this.power);
+            //alert(missile.yVector);
+            //missile.shoot();
+            var exitTurnLoop = setInterval(update,FPS/1000);
+            document.getElementById("fireB").disabled = true; 
+            document.getElementById("shotInput")[2].value = this.nextTurn;
+        }
+        
+        function cleanUp(){
+            // clears canvas and resets buttons for new game
+            document.getElementById("gameInfo").innerHTML ="GAME OVER";
+            shootContext.clearRect(0,0,800,400);
+            document.getElementById("fireB").type = "hidden";
+            document.getElementById("shotInput")[0].type = "hidden";
+            document.getElementById("shotInput")[1].type = "hidden";
+    
+            document.getElementById("shotInput")[0].value = null;
+            document.getElementById("shotInput")[1].value = null;
+            document.getElementById("shotInput")[2].value = "player1";
+        }
+
+        function makeGame(){
+        	//alert("you clicked button");
+            document.getElementById("gameInfo").innerHTML ="FIGHT!!!!!";
+            makeSkyline();
+            
+            gorilla1.place();
+            gorilla2.place();
+            gorilla1.draw();
+            gorilla2.draw();
+            
+            var wind = new Wind();
+           //document.getElementById("play").disabled = true; 
+           document.getElementById("fireB").type = "button";
+           document.getElementById("shotInput")[0].type = "text";
+           document.getElementById("shotInput")[1].type = "text";
+        }
+        
+      </script>
+   </body>
+</html>
